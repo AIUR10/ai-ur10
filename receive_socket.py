@@ -17,7 +17,7 @@ class Receive_socket():
 
         logging.basicConfig(level=logging.INFO)
 
-        conf = rtde_config.ConfigFile("libs/record_configuration.xml")
+        conf = rtde_config.ConfigFile("lib/record_configuration.xml")
         self.output_names, self.output_types = conf.get_recipe('out')
 
     def connect(self) -> None:
