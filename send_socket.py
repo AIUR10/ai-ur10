@@ -1,20 +1,28 @@
 #!/usr/bin/env python
+
 import time
 import socket
 import math
+import logging
 
-IP = "192.168.135.128" # VM
-IP_ENSTA = "147.250.35.20" # ROBOT ENSTA
+class Send_socket():
 
-# parameters
+    def __init__(self, ip_address) -> None:
+        self.host = ip_address
+        self.port = 30001
 
-s = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
-s.connect ((IP, 30001))
+        logging.basicConfig(level=logging.INFO)
 
-joint_positions_degrees = [0, -128.19, 79.71, -131.52, 0, 0]
-joint_positions_radians = [math.radians(jpd) for jpd in joint_positions_degrees]
+    def connect(self) -> None:
+        self.con = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.con.connect((self.host, self.port))
 
-s.send ((f"movel({joint_positions_radians}, a=1, v=1)"+"\n").encode('utf8'))
-time.sleep(1)
 
-s.close ()
+    def send(self, action):
+
+        joint_positions_radians = [math.radians(joint_position_degree) for joint_position_degree in action]
+        self.con.send((f"movel({joint_positions_radians}, a=1, v=1)"+"\n").encode('utf8'))
+        time.sleep(1)
+
+    def disconnect(self):
+        self.con.close()

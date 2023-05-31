@@ -1,66 +1,55 @@
 #!/usr/bin/env python
 
-import argparse
 import logging
+import sys
+sys.path.append('./docs')
 import rtde.rtde as rtde
 import rtde.rtde_config as rtde_config
 import time
+import numpy as np
 
-IP = "192.168.135.128" # VM
-IP_ENSTA = "147.250.35.20" # ROBOT ENSTA
+class Receive_socket():
 
-# parameters
-parser = argparse.ArgumentParser()
-parser.add_argument('--host', default='192.168.135.128',help='name of host to connect to (localhost)') # VM
-parser.add_argument('--port', type=int, default=30004, help='port number (30002)')
-parser.add_argument('--samples', type=int, default=0,help='number of samples to record')
-parser.add_argument('--frequency', type=int, default=125, help='the sampling frequency in Herz')
-parser.add_argument("--verbose", help="increase output verbosity", action="store_true")
-parser.add_argument("--buffered", help="Use buffered receive which doesn't skip data", action="store_true")
-parser.add_argument("--binary", help="save the data in binary format", action="store_true")
-args = parser.parse_args()
+    def __init__(self, ip_address) -> None:
+        self.host = ip_address
+        self.port = 30004
+        self.frequency = 125
 
-if args.verbose:
-    logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO)
 
-conf = rtde_config.ConfigFile("record_configuration.xml")
-output_names, output_types = conf.get_recipe('out')
+        conf = rtde_config.ConfigFile("libs/record_configuration.xml")
+        self.output_names, self.output_types = conf.get_recipe('out')
 
-con = rtde.RTDE(args.host, args.port)
-con.connect()
+    def connect(self) -> None:
+        self.con = rtde.RTDE(self.host, self.port)
+        self.con.connect()
 
-# settings
-con.get_controller_version()
-con.send_output_setup(output_names, output_types, frequency=args.frequency)
+        # settings
+        self.con.get_controller_version()
+        self.con.send_output_setup(self.output_names, self.output_types, frequency=self.frequency)
 
-con.send_start()
+        self.con.send_start()
 
-# initialize variables
-X = 0
-Y = 0
-Z = 0
-RX = 0
-RY = 0
-RZ = 0
+    
+    def receive(self):
 
-# main loop
-if args.samples > 0:
-    keep_running = False
-try:
-    if args.buffered:
-        state = con.receive_buffered(args.binary)
-    else:
-        state = con.receive(args.binary)
-    if state is not None:
-        X,Y,Z,RX,RY,RZ = state.actual_TCP_pose
-        date_and_time = state.timestamp
-        print("TIME: "+str(date_and_time)+"\n TCP: pos ["+str(X)+", "+str(Y)+", "+str(Z)+"] m, \n rotation : ["+str(RX)+", "+str(RY)+", "+str(RZ)+"] rad")
-        time.sleep(0.1)
+        # initialize variables
+        X, Y, Z, RX, RY, RZ = 0, 0, 0, 0, 0, 0
 
-except KeyboardInterrupt:
-    exit
-except rtde.RTDEException:
-    exit
+        try:
+            state = self.con.receive()
+            if state is not None:
+                X, Y, Z, RX, RY, RZ = state.actual_TCP_pose
+                logging.info(f"TIME: {state.timestamp} - TCP: pos [{X}, {Y}, {Z}], rotation : [{RX}, {RY}, {RZ}]")
+                time.sleep(0.1)
 
-con.send_pause()
-con.disconnect()
+        except KeyboardInterrupt:
+            exit
+        except rtde.RTDEException:
+            exit
+
+        return np.array([X, Y, Z, RX, RY, RZ])
+
+    def disconnect(self) -> None: 
+        self.con.send_pause()
+        self.con.disconnect()
