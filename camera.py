@@ -3,8 +3,9 @@
 import cv2
 import logging
 import numpy as np
-from segment_anything import SamAutomaticMaskGenerator
 from segment_anything.modeling import Sam
+from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+
 
 class Camera():
       
@@ -12,6 +13,7 @@ class Camera():
         if ip_address_camera is not None:
             self.host = ip_address_camera
             self.port = 8080
+        self.device = "cuda"
 
         logging.basicConfig(level=logging.INFO)
 
@@ -37,10 +39,11 @@ class Camera():
 
             # if frame is read correctly status is True
             if not status:
-                print("Can't receive frame (stream end?). Exiting ...")
+                logging.info("Can't receive frame (stream end?). Exiting ...")
                 break
 
-            output = self.segment(frame)
+            output = self.segment(frame, colors)
+            # output = frame
 
             # Set the desired width and height
             resized_frame = cv2.resize(output, (self.frame_width//3, self.frame_height//3))  
@@ -55,9 +58,22 @@ class Camera():
             if terminate_flag:
                 break        
 
-    def segment(self, frame, colors):
-        mask_generator = SamAutomaticMaskGenerator(Sam)
+    def segment(self, frame, colors, model_type="vit_h", sam_checkpoint="sam_vit_h_4b8939.pth"):
+        
+        logging.info("Creating sam model...")
+        sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+        sam.to(device=self.device)
+        logging.info("Done")
+        
+        
+        logging.info("Creating mask generator...")
+        mask_generator = SamAutomaticMaskGenerator(sam)
+        logging.info("Done")
+
+        logging.info("Generating mask...")
         masks = mask_generator.generate(frame)
+        logging.info("Done")
+
         combined_mask = None
 
         if len(masks) != 0:
