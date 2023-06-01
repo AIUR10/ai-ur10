@@ -7,4 +7,5 @@ pycocotools
 matplotlib 
 onnxruntime 
 onnx
-urllib3
+torch
+torchvision
