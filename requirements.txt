@@ -2,10 +2,7 @@ wheel
 numpy
 lib/rtde-2.7.2-release.zip
 opencv-python
-git+https://github.com/facebookresearch/segment-anything.git
-pycocotools 
 matplotlib 
-onnxruntime 
-onnx
+git+https://github.com/huggingface/transformers.git
 torch
 torchvision
