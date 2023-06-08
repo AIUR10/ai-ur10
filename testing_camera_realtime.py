@@ -7,10 +7,10 @@ def main():
     
 
     # Setup camera
-    IP_camera = "137.194.159.157"
+    IP_camera = "192.168.175.45"
 
     camera = Camera(IP_camera)
-    camera.connect()
+    camera.connect(path_to_save_video="data/video.mp4", captureVideo=True)
 
     terminate_flag = False
 
