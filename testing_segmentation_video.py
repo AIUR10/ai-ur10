@@ -7,7 +7,7 @@ def main():
     
     # Setup segmenter
     camera = Camera()
-    camera.connect('data/PXL_20230601_083011266.ACTIVE.mp4')
+    camera.connect(path_to_save_video='data/video.mp4')
 
     terminate_flag = False
 
@@ -16,7 +16,7 @@ def main():
 
     try:
         # Create and run the read_video_capture task
-        video_task = loop.create_task(camera.read(terminate_flag))
+        video_task = loop.create_task(camera.segment_video(output_segmented_path="data/video_segmented.mp4"))
 
         # Run the event loop until termination condition is met
         loop.run_until_complete(video_task)
