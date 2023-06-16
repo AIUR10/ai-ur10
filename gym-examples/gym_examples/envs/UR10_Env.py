@@ -31,6 +31,9 @@ class UR10Env(gym.Env):
         self.pr.start()
         self.agent = UR10()
         print(self._get_state())
+        print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
+        self.total_distance_moved = 0  # Add a counter for total distance moved
+        #self.reset()
         
     def _get_state(self):
         # Return state containing arm joint angles/velocities & target position
@@ -38,11 +41,24 @@ class UR10Env(gym.Env):
                             self.agent.get_joint_velocities()])
         
     def reset(self):
-        return self._get_state()
+        return None
 
     def step(self, action):
-        reward = 0
-        return reward, self._get_state()
+        initial_position = self.agent.get_tip().get_position()  # Get the initial position of the end effector
+        velocities = [0.1, 0, 0, 0, 0, 0]  # Adjust these velocities until the arm moves in the desired direction
+        self.agent.set_joint_target_velocities(velocities)  # Apply velocities
+        self.pr.step()  # Step the physics simulation forward
+        final_position = self.agent.get_tip().get_position()  # Get the final position of the end effector
+
+        # Calculate distance moved and add to total
+        distance_moved = np.linalg.norm(np.array(final_position) - np.array(initial_position))
+        self.total_distance_moved += distance_moved
+
+        # Check if the arm has moved the required distance
+        done = self.total_distance_moved >= 0.5  # Check if arm has moved 50 cm
+        reward = distance_moved
+
+        return self._get_state(), reward, done, {}
         
     def shutdown(self):
         self.pr.stop()
