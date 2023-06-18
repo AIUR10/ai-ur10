@@ -25,6 +25,9 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 SCENE_FILE = join(os.getcwd(), 'test_scene_robots_ur10_copy.ttt')
 EPISODES = 2
 EPISODE_LENGTH = 3
+BONUS_THRESHOLD = 0.1
+BONUS_REWARD = 100
+VELOCITY_PENALTY = 0.01
 
 class UR10Env(gym.Env):
 
@@ -47,7 +50,7 @@ class UR10Env(gym.Env):
         # observation space
         self.observation_space = spaces.Box(low=-10, high=10, shape=(12,), dtype=np.float32)
         # action space
-        self.action_space = spaces.Box(low=-180, high=180, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-18, high=18, shape=(6,), dtype=np.float32)
 
         #print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
         
@@ -55,9 +58,12 @@ class UR10Env(gym.Env):
         # Return state containing arm joint angles/velocities & target position
         return np.concatenate([self.agent.get_joint_positions(),
                             self.agent.get_joint_velocities()])
-        
+
     def reset(self):
-        self.agent.set_joint_positions(self.initial_joint_positions)
+        # Gradually move the robot arm back to the initial position
+        for _ in range(100):  # Adjust as needed
+            self.agent.set_joint_target_positions(self.initial_joint_positions)
+            self.pr.step()
         return self.get_obs()
 
     def step(self, action):
@@ -75,6 +81,10 @@ class UR10Env(gym.Env):
 
         # Check if the arm has moved the required distance
         reward = np.exp(-distance)
+        if distance < BONUS_THRESHOLD:  # Add a bonus for reaching the target
+            reward += BONUS_REWARD
+        # Penalize high velocities
+        reward -= np.sum(np.abs(action)) * VELOCITY_PENALTY 
 
         # Update the count down
         self.count_down -= 1
