@@ -163,3 +163,7 @@ cython_debug/
 
 # RTDE
 *.zip
+
+# Unnecessary, coming from tries
+install/
+log/
