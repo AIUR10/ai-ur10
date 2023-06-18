@@ -9,17 +9,20 @@ This script contains :
 """
 
 import gym
+from gym import spaces
 import os
 import numpy as np
 from os.path import join
 from pyrep import PyRep
 from pyrep.robots.arms.ur10 import UR10
+from pyrep.objects.dummy import Dummy 
+from pyrep.objects.cartesian_path import CartesianPath
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 
 #SCENE_FILE = join(os.getcwd(), 'scene_with_ur10.ttt')
-SCENE_FILE = join(os.getcwd(), 'test_scene_robots_ur10.ttt')
+SCENE_FILE = join(os.getcwd(), 'test_scene_robots_ur10_copy.ttt')
 EPISODES = 2
 EPISODE_LENGTH = 3
 
@@ -28,42 +31,58 @@ class UR10Env(gym.Env):
     def __init__(self):
         super(UR10Env, self).__init__()
         self.pr = PyRep()
-        self.pr.launch(SCENE_FILE, headless=False) # headless=True not to display the CoppeliaSim interface
+        self.pr.launch(SCENE_FILE, headless=False, responsive_ui=True) # headless=True not to display the CoppeliaSim interface
         self.pr.start()
         self.agent = UR10()
         self.agent.set_control_loop_enabled(False)
         self.agent.set_motor_locked_at_zero_velocity(True)
-        #print(self._get_state())
-        #print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
+        self.target = Dummy('UR10_target')
+        self.path = CartesianPath('CircularPath')
         self.agent_ee_tip = self.agent.get_tip()
         self.initial_joint_positions = self.agent.get_joint_positions()
-        self.total_distance_moved = 0  # Add a counter for total distance moved
+        # count down from the maximum number of steps
+        self.max_steps = 100 
+        self.count_down = self.max_steps
+
+        # observation space
+        self.observation_space = spaces.Box(low=-10, high=10, shape=(12,), dtype=np.float32)
+        # action space
+        self.action_space = spaces.Box(low=-180, high=180, shape=(6,), dtype=np.float32)
+
+        #print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
         
-    def _get_state(self):
+    def get_obs(self):
         # Return state containing arm joint angles/velocities & target position
         return np.concatenate([self.agent.get_joint_positions(),
                             self.agent.get_joint_velocities()])
         
     def reset(self):
         self.agent.set_joint_positions(self.initial_joint_positions)
-        return self._get_state()
+        return self.get_obs()
 
     def step(self, action):
-        initial_position = self.agent_ee_tip.get_position()  # Get the initial position of the end effector
-        velocities = [10, 10, 10, 10, 10, 10]  # Adjust these velocities until the arm moves in the desired direction
-        self.agent.set_joint_target_velocities(velocities)  # Apply velocities
-        self.pr.step()  # Step the physics simulation forward
-        final_position = self.agent_ee_tip.get_position()  # Get the final position of the end effector
+        path_position = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[0] # Get the next position on the path 
+        # set the target 
+        self.target.set_position(path_position)
+        target_position = self.target.get_position()
 
-        # Calculate distance moved and add to total
-        distance_moved = np.linalg.norm(np.array(final_position) - np.array(initial_position))
-        self.total_distance_moved += distance_moved
+        self.agent.set_joint_target_velocities(action)  # Apply action, which contains velocities
+        self.pr.step()  # Step the physics simulation forward
+        ee_position = self.agent_ee_tip.get_position()  # Get the final position of the end effector
+
+        # Calculate distance to the target
+        distance = np.linalg.norm(np.array(target_position) - np.array(ee_position))
 
         # Check if the arm has moved the required distance
-        done = self.total_distance_moved >= 0.5  # Check if arm has moved 50 cm
-        reward = distance_moved
+        reward = np.exp(-distance)
 
-        return self._get_state(), reward, done, {}
+        # Update the count down
+        self.count_down -= 1
+
+        # Check if the episode is done
+        done = self.count_down == 0
+
+        return self.get_obs(), reward, done, {}
         
     def shutdown(self):
         self.pr.stop()
