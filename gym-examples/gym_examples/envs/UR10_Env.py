@@ -31,10 +31,10 @@ VELOCITY_PENALTY = 0.01
 
 class UR10Env(gym.Env):
 
-    def __init__(self):
+    def __init__(self, headless=True, responsive_ui=False, max_steps=100):
         super(UR10Env, self).__init__()
         self.pr = PyRep()
-        self.pr.launch(SCENE_FILE, headless=False, responsive_ui=True) # headless=True not to display the CoppeliaSim interface
+        self.pr.launch(SCENE_FILE, headless=headless, responsive_ui=responsive_ui) # headless=True not to display the CoppeliaSim interface
         self.pr.start()
         self.agent = UR10()
         self.agent.set_control_loop_enabled(False)
@@ -44,26 +44,26 @@ class UR10Env(gym.Env):
         self.agent_ee_tip = self.agent.get_tip()
         self.initial_joint_positions = self.agent.get_joint_positions()
         # count down from the maximum number of steps
-        self.max_steps = 100 
+        self.max_steps = max_steps 
         self.count_down = self.max_steps
 
         # observation space
-        self.observation_space = spaces.Box(low=-10, high=10, shape=(12,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32)
         # action space
-        self.action_space = spaces.Box(low=-18, high=18, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-10, high=10, shape=(6,), dtype=np.float32)
 
         #print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
         
     def get_obs(self):
         # Return state containing arm joint angles/velocities & target position
         return np.concatenate([self.agent.get_joint_positions(),
-                            self.agent.get_joint_velocities()])
+                            self.agent.get_joint_velocities(), 
+                            self.target.get_position() - self.agent_ee_tip.get_position()])
 
     def reset(self):
-        # Gradually move the robot arm back to the initial position
-        for _ in range(100):  # Adjust as needed
-            self.agent.set_joint_target_positions(self.initial_joint_positions)
-            self.pr.step()
+        self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
+        # Reset count down
+        self.count_down = self.max_steps
         return self.get_obs()
 
     def step(self, action):
