@@ -167,6 +167,7 @@ cython_debug/
 # Unnecessary, coming from tries
 install/
 log/
+logs/
 sac_ur10_tensorboard
 sac_circular
 

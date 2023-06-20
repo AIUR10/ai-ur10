@@ -1,6 +1,8 @@
 Just a list of useful resources
 # TODO add to README
 
+# RL
+
 # Great notebook
 https://github.com/araffin/rl-tutorial-jnrr19/blob/sb3/2_gym_wrappers_saving_loading.ipynb
 
@@ -15,3 +17,11 @@ https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html
 
 # General examples of RL algorithms
 https://stable-baselines3.readthedocs.io/en/master/guide/examples.html
+
+
+
+
+# 3D points cloud from video
+
+# what are we looking for 
+https://stackoverflow.com/questions/68974038/make-3d-point-cloud-from-video
