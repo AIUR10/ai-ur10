@@ -5,9 +5,8 @@ import asyncio
 
 def main():
     
-
     # Setup camera
-    IP_camera = "192.168.175.45"
+    IP_camera = "192.168.118.165"
 
     camera = Camera(IP_camera)
     camera.connect(path_to_save_video="data/video.mp4", captureVideo=True)

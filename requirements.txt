@@ -6,3 +6,4 @@ matplotlib
 git+https://github.com/huggingface/transformers.git
 torch
 torchvision
+metaseg
