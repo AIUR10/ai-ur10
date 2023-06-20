@@ -20,9 +20,7 @@ from pyrep.objects.cartesian_path import CartesianPath
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-
-#SCENE_FILE = join(os.getcwd(), 'scene_with_ur10.ttt')
-SCENE_FILE = join(os.getcwd(), 'test_scene_robots_ur10_copy.ttt')
+SCENE_FILE = join(os.getcwd(), 'scene_robots_ur10_circular.ttt')
 EPISODES = 2
 EPISODE_LENGTH = 3
 BONUS_THRESHOLD = 0.1
@@ -31,7 +29,7 @@ VELOCITY_PENALTY = 0.01
 
 class UR10Env(gym.Env):
 
-    def __init__(self, headless=True, responsive_ui=False, max_steps=100):
+    def __init__(self, headless=True, responsive_ui=False, max_steps=1000, nb_steps_first_position=100):
         super(UR10Env, self).__init__()
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=headless, responsive_ui=responsive_ui) # headless=True not to display the CoppeliaSim interface
@@ -43,12 +41,14 @@ class UR10Env(gym.Env):
         self.path = CartesianPath('CircularPath')
         self.agent_ee_tip = self.agent.get_tip()
         self.initial_joint_positions = self.agent.get_joint_positions()
-        # count down from the maximum number of steps
-        self.max_steps = max_steps 
-        self.count_down = self.max_steps
+        # number of steps to reach the first position
+        self.nb_steps_first_position = nb_steps_first_position
+        self.max_steps = max_steps # beware it does not include reaching the first position
+        # count down from the maximum number of steps for the whole scene
+        self.count_down = self.max_steps + self.nb_steps_first_position
 
         # observation space
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
         # action space
         self.action_space = spaces.Box(low=-10, high=10, shape=(6,), dtype=np.float32)
 
@@ -58,20 +58,32 @@ class UR10Env(gym.Env):
         # Return state containing arm joint angles/velocities & target position
         return np.concatenate([self.agent.get_joint_positions(),
                             self.agent.get_joint_velocities(), 
-                            self.target.get_position() - self.agent_ee_tip.get_position()])
+                            self.target.get_position() - self.agent_ee_tip.get_position(),
+                            self.agent_ee_tip.get_orientation(relative_to=self.target)])
 
     def reset(self):
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         # Reset count down
-        self.count_down = self.max_steps
+        self.count_down = self.max_steps + self.nb_steps_first_position
         return self.get_obs()
 
     def step(self, action):
-        path_position = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[0] # Get the next position on the path 
+        if self.count_down > self.max_steps:
+            # Reach first position within predefined number of steps
+            path_position = self.path.get_pose_on_path(0)[0]    
+            path_orientation = self.path.get_pose_on_path(0)[1]
+        else:
+            # Reach the following positions 
+            path_position = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[0] # Get the next position on the path 
+            path_orientation = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[1]
         # set the target 
         self.target.set_position(path_position)
+        self.target.set_orientation(path_orientation)
+        # Adjust orientation to get the one desired for the tip
+        self.target.set_orientation([np.pi/2, 0, 0], relative_to=self.target) # after observation, I found this is the correct orientation
         target_position = self.target.get_position()
 
+        # Act
         self.agent.set_joint_target_velocities(action)  # Apply action, which contains velocities
         self.pr.step()  # Step the physics simulation forward
         ee_position = self.agent_ee_tip.get_position()  # Get the final position of the end effector
@@ -85,6 +97,9 @@ class UR10Env(gym.Env):
             reward += BONUS_REWARD
         # Penalize high velocities
         reward -= np.sum(np.abs(action)) * VELOCITY_PENALTY 
+        # Penalize incorrect orientation
+        # Should match target orientation
+        reward -= np.sum(np.abs(self.agent_ee_tip.get_orientation(relative_to=self.target))) # As for now it looks at the center of the circular motion
 
         # Update the count down
         self.count_down -= 1
@@ -98,14 +113,3 @@ class UR10Env(gym.Env):
         self.pr.stop()
         self.pr.shutdown()
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    
-
