@@ -2,7 +2,6 @@
 
 import cv2
 import logging
-import numpy as np
 from metaseg import SegAutoMaskPredictor
 
 class Camera():

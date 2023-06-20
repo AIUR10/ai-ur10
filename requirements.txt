@@ -2,8 +2,4 @@ wheel
 numpy
 lib/rtde-2.7.2-release.zip
 opencv-python
-matplotlib 
-git+https://github.com/huggingface/transformers.git
-torch
-torchvision
 metaseg
