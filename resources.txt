@@ -1,0 +1,17 @@
+Just a list of useful resources
+# TODO add to README
+
+# Great notebook
+https://github.com/araffin/rl-tutorial-jnrr19/blob/sb3/2_gym_wrappers_saving_loading.ipynb
+
+# Env example for RL
+https://github.com/stepjam/PyRep/blob/master/examples/example_reinforcement_learning_env.py
+
+# Robot components PyRep
+https://github.com/stepjam/PyRep/blob/master/pyrep/robots/robot_component.py#L225
+
+# Important tips and tricks to begin with RL
+https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html
+
+# General examples of RL algorithms
+https://stable-baselines3.readthedocs.io/en/master/guide/examples.html

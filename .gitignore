@@ -167,6 +167,8 @@ cython_debug/
 # Unnecessary, coming from tries
 install/
 log/
+sac_ur10_tensorboard
+sac_circular
 
 # Model
 *.pth
