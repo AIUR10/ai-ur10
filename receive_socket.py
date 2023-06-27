@@ -40,7 +40,7 @@ class Receive_socket():
             state = self.con.receive()
             if state is not None:
                 X, Y, Z, RX, RY, RZ = state.actual_TCP_pose
-                logging.info(f"TIME: {state.timestamp} - TCP: pos [{X}, {Y}, {Z}], rotation : [{RX}, {RY}, {RZ}]")
+                logging.info(f"Current position: [{X}, {Y}, {Z}, {RX}, {RY}, {RZ}]")
                 time.sleep(0.1)
 
         except KeyboardInterrupt:

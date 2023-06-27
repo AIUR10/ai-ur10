@@ -22,7 +22,7 @@ def main():
     # Send action to robot
     new_position = current_position
     new_position[2] = new_position[2] + 0.04
-    logging.info(f"New position: {new_position}")
+    logging.info(f"Go to: {new_position}")
 
     sender.send(new_position)
 
