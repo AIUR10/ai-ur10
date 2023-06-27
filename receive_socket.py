@@ -40,6 +40,11 @@ class Receive_socket():
             state = self.con.receive()
             if state is not None:
                 X, Y, Z, RX, RY, RZ = state.actual_TCP_pose
+                '''
+                RX = -RX
+                RY = -RY
+                RZ = -RZ
+                '''
                 logging.info(f"TIME: {state.timestamp} - TCP: pos [{X}, {Y}, {Z}], rotation : [{RX}, {RY}, {RZ}]")
                 time.sleep(0.1)
 

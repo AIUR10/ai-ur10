@@ -19,9 +19,10 @@ class Send_socket():
 
 
     def send(self, action):
-
-        joint_positions_radians = [math.radians(joint_position_degree) for joint_position_degree in action]
-        self.con.send((f"movel({joint_positions_radians}, a=1, v=1)"+"\n").encode('utf8'))
+        print(f"ACTION : {action}")
+        #joint_positions_radians = [math.radians(joint_position_degree) for joint_position_degree in action]
+        #self.con.send((f"movel({joint_positions_radians}, a=0.01, v=0.1)"+"\n").encode('utf8'))
+        self.con.send((f"movel(p{action}, a=0.01, v=0.05)"+"\n").encode('utf8'))
         time.sleep(1)
 
     def disconnect(self):
