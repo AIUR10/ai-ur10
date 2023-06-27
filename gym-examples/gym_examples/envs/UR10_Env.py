@@ -20,16 +20,21 @@ from pyrep.objects.cartesian_path import CartesianPath
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-SCENE_FILE = join(os.getcwd(), 'scene_robots_ur10_circular.ttt')
+SCENE_FILE = join(os.getcwd(), 'scene_robots_ur10_circular_easystart.ttt')
 EPISODES = 2
 EPISODE_LENGTH = 3
+DISTANCE_BONUS = 2
 BONUS_THRESHOLD = 0.1
 BONUS_REWARD = 100
 VELOCITY_PENALTY = 0.01
+ORIENTATION_PENALTY = 0.01
+
+DONE_DISTANCE = 0.025
+DONE_ORIENTATION = 0.1 # quite arbitrary for now
 
 class UR10Env(gym.Env):
 
-    def __init__(self, headless=True, responsive_ui=False, max_steps=1000, nb_steps_first_position=100):
+    def __init__(self, headless=True, responsive_ui=False, max_steps=1000):#, nb_steps_first_position=100):
         super(UR10Env, self).__init__()
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=headless, responsive_ui=responsive_ui) # headless=True not to display the CoppeliaSim interface
@@ -42,10 +47,10 @@ class UR10Env(gym.Env):
         self.agent_ee_tip = self.agent.get_tip()
         self.initial_joint_positions = self.agent.get_joint_positions()
         # number of steps to reach the first position
-        self.nb_steps_first_position = nb_steps_first_position
+        #self.nb_steps_first_position = nb_steps_first_position
         self.max_steps = max_steps # beware it does not include reaching the first position
         # count down from the maximum number of steps for the whole scene
-        self.count_down = self.max_steps + self.nb_steps_first_position
+        self.count_down = self.max_steps #+ self.nb_steps_first_position
 
         # observation space
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
@@ -56,18 +61,28 @@ class UR10Env(gym.Env):
         
     def get_obs(self):
         # Return state containing arm joint angles/velocities & target position
-        return np.concatenate([self.agent.get_joint_positions(),
+        obs = np.concatenate([self.agent.get_joint_positions(),
                             self.agent.get_joint_velocities(), 
                             self.target.get_position() - self.agent_ee_tip.get_position(),
                             self.agent_ee_tip.get_orientation(relative_to=self.target)])
+        print(obs)
+        return obs
 
     def reset(self):
+        print("RESET")
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
+        # Reset the first position to reach
+        path_position = self.path.get_pose_on_path(0)[0]
+        path_orientation = self.path.get_pose_on_path(0)[1]
+        self.target.set_position(path_position)
+        self.target.set_orientation(path_orientation)
+        self.target.set_orientation([np.pi/2, 0, 0], relative_to=self.target) # after observation, I found this is the correct orientation
         # Reset count down
-        self.count_down = self.max_steps + self.nb_steps_first_position
+        self.count_down = self.max_steps #+ self.nb_steps_first_position
         return self.get_obs()
 
     def step(self, action):
+        '''
         if self.count_down > self.max_steps:
             # Reach first position within predefined number of steps
             path_position = self.path.get_pose_on_path(0)[0]    
@@ -76,12 +91,19 @@ class UR10Env(gym.Env):
             # Reach the following positions 
             path_position = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[0] # Get the next position on the path 
             path_orientation = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[1]
+        '''
+
+        # Reach position
+        path_position = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[0] # Get the next position on the path 
+        path_orientation = self.path.get_pose_on_path(1-self.count_down/self.max_steps)[1]
+
         # set the target 
         self.target.set_position(path_position)
         self.target.set_orientation(path_orientation)
         # Adjust orientation to get the one desired for the tip
         self.target.set_orientation([np.pi/2, 0, 0], relative_to=self.target) # after observation, I found this is the correct orientation
         target_position = self.target.get_position()
+        print(f"Target position {target_position}")
 
         # Act
         self.agent.set_joint_target_velocities(action)  # Apply action, which contains velocities
@@ -92,21 +114,24 @@ class UR10Env(gym.Env):
         distance = np.linalg.norm(np.array(target_position) - np.array(ee_position))
 
         # Check if the arm has moved the required distance
-        reward = np.exp(-distance)
+        reward = np.exp(-DISTANCE_BONUS*distance)
         if distance < BONUS_THRESHOLD:  # Add a bonus for reaching the target
             reward += BONUS_REWARD
         # Penalize high velocities
         reward -= np.sum(np.abs(action)) * VELOCITY_PENALTY 
         # Penalize incorrect orientation
         # Should match target orientation
-        reward -= np.sum(np.abs(self.agent_ee_tip.get_orientation(relative_to=self.target))) # As for now it looks at the center of the circular motion
+        orientation = np.sum(np.abs(self.agent_ee_tip.get_orientation(relative_to=self.target)))
+        print(f"Tip orientation relatively to target {orientation}")
+        reward -= orientation * ORIENTATION_PENALTY # As for now it looks at the center of the circular motion
 
         # Update the count down
-        self.count_down -= 1
+        if distance < DONE_DISTANCE and orientation < DONE_ORIENTATION:
+            self.count_down -= 1
+            print("TARGET REACHED")
 
         # Check if the episode is done
         done = self.count_down == 0
-
         return self.get_obs(), reward, done, {}
         
     def shutdown(self):
