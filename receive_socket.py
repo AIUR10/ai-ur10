@@ -53,5 +53,10 @@ class Receive_socket():
         return current_position
 
     def disconnect(self) -> None: 
-        self.con.send_pause()
-        self.con.disconnect()
+        try:
+            self.con.send_pause()
+            self.con.disconnect()
+        except:
+            pass
+        finally:
+            pass

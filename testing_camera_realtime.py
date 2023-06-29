@@ -9,7 +9,7 @@ def main():
     IP_camera = "192.168.118.165"
 
     camera = Camera(IP_camera)
-    camera.connect(path_to_save_video="data/video.mp4", captureVideo=True)
+    camera.connect(video_to_segment_path="data/video.mp4", captureVideo=True)
 
     terminate_flag = False
 

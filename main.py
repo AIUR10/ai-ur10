@@ -2,7 +2,20 @@
 
 from receive_socket import Receive_socket
 from send_socket import Send_socket
-import logging
+from camera import Camera
+from multiprocessing import Process, Value
+
+
+def observe_object(sender, receiver, shared_variable):
+
+    # Receive position of robot
+    current_position = receiver.receive()
+
+    # sender.send(new_position)
+    sender.send_circular_action(current_position, receiver, shared_variable)
+
+    # Receive position of robot
+    current_position = receiver.receive()
 
 
 def main():
@@ -10,26 +23,26 @@ def main():
     host_ENSTA = "147.250.35.20" # ROBOT ENSTA
 
     # Setup receiver and sender
-    receiver = Receive_socket(host)
-    sender = Send_socket(host)
+    receiver = Receive_socket(host_ENSTA)
+    sender = Send_socket(host_ENSTA)
     receiver.connect()
     sender.connect()
 
+    camera = Camera()
+    camera.connect(video_to_segment_path='data/video.mp4', captureVideo=True)
 
-    # Receive position of robot
-    current_position = receiver.receive()
+    shared_variable = Value('b', False)
 
-    # Send action to robot
-    new_position = current_position
-    new_position[2] = new_position[2] + 0.04
-    logging.info(f"Go to: {new_position}")
 
-    sender.send(new_position)
+    observe_process = Process(target=observe_object, args=(sender, receiver, shared_variable))
+    observe_process.start()
 
-    # Receive position of robot
-    current_position = receiver.receive()
+    camera.read(shared_variable)
 
-    # Disconnect receiver and sender connection
+    observe_process.join()
+    
+    # Disconnect receiver, sender and camera connection
+    camera.disconnect()
     receiver.disconnect()
     sender.disconnect()
 
