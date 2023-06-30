@@ -6,7 +6,6 @@ sys.path.append('./docs')
 import rtde.rtde as rtde
 import rtde.rtde_config as rtde_config
 import time
-import numpy as np
 
 class Receive_socket():
 
@@ -24,13 +23,12 @@ class Receive_socket():
         self.con = rtde.RTDE(self.host, self.port)
         self.con.connect()
 
-        # settings
+        # Settings
         self.con.get_controller_version()
         self.con.send_output_setup(self.output_names, self.output_types, frequency=self.frequency)
 
         self.con.send_start()
 
-    
     def receive(self):
 
         # initialize variables
