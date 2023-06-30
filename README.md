@@ -26,6 +26,50 @@ We initially intended to move in a circle around the object, but encountered iss
 
 As a result, we try a different strategy by moving semi-circularly above the robot. This method is easier because the outgoing and return movements are identical. However, we see very tiny variations between outbound and return movement, which, depending on the location of the item of interest, leads to somewhat superior tracking for either the outbound or return travel. In order to ensure that we had enough information to continue with the project's second phase, we decided to only catch the object during its outward motion. 
 
+To perform the movements we use the URScript. However, in order to anticipate more complex movements later in the project, we try to train our robot arm through Reinforcement Learning (RL), using a combination of the simulator CoppeliaSim, OpenAI Gym package to create a RL environment, and Stable Baselines 3 package and their SAC algorithm. This setup allow us to have a fast simulated RL environment to train our arm in. The movement we try to perform is the circle on a flat plane parallel to the floor mentionned earlier with the tip of the arm. In our latest version, the arm must learn to orient its tip toward the center of the circle at all time.
+
+RL developement was an iterative process for us. Here are some examples of training curves and what we introduced each time.
+
+* SAC_1	: not enough training time, thought it was not working
+* SAC_2	: more training time, still not working but actor loss is decreasing
+* SAC_3	: even more training time, at the end it kinda works !
+
+![Example RL debut 1](images/rl_1.png)
+![Example RL debut 2](images/rl_2.png)
+
+* SAC_4	: even even more training time, as it seems it could learn more. We go too far in the training :D
+* SAC_5   : slow down the circular motion, giving it more time to adjust, but requires a lot more traning !
+
+![Example RL improve 1](images/rl_3.png)
+![Example RL improve 2](images/rl_4.png)
+
+* SAC_6   : elevate circle in the air and closer to robot, orient the robot to have easier first movements, allocate steps to reach first position, quick circular motion.
+* SAC_7   : from now on, observe the difference between the target orientation and tip orientation
+* SAC_8   : readjusting the weights in the reward of each component, move the circle closer to the robot. The observed behavior of the robot is that it folds but in the wrong way, making it harder to move later on 
+* SAC_9   : reward is harder now as regard the distance BONUS_THRESHOLD = 0.1 BONUS_REWARD = 1 VELOCITY_PENALTY = 0.01 ORIENTATION_PENALTY = 0.01
+* SAC_13  : the trainings in-between are mistakes. I just push the training further hoping the entropy will help the arm start folding the right way. 
+* SAC_14  : add another 10M steps => it's bad.
+* SAC_16  : simplifying the task again by giving a better start position with correct flex, reset the target position
+
+![Example RL simplify 1](images/rl_5.png)
+![Example RL simplify 2](images/rl_6.png)
+
+* SAC_17  : sets an overall time, only change the target when the arm is close, reduce circle to 25 points
+* SAC_18  : re instaure the high bonus, 1000 steps episode
+
+![Example RL time management 1](images/rl_7.png)
+![Example RL time management 2](images/rl_8.png)
+
+Unfortunately, we are not yet able to perform a proper circular movement learned with RL. At best the arm reaches the location of the circle and vaguely goes around it.
+
+Some illustrations of what you can see when using the RL setup to try out a learned movement, the arm is trying to reach the red dot on the circle :
+
+![Example coppelia 1](images/coppelia_1.png)
+![Example coppelia 2](images/coppelia_2.png)
+![Example coppelia 3](images/coppelia_3.png)
+
+There is still much to do on this part, succeed to do that simple movement, and then go toward more complex ones that would be used to draw with the arm on a shoe.
+
 2. Segment the object
 
 After the video has been recorded, the process of distinguishing the shoe item from the background begins. This segmentation process aims to identify specific shoe parts that can be changed. To precisely isolate the shoe item, use segmentation techniques like "Segment Anything."
