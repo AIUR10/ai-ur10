@@ -37,6 +37,8 @@ RL developement was an iterative process for us. Here are some examples of train
 ![Example RL debut 1](images/rl_1.png)
 ![Example RL debut 2](images/rl_2.png)
 
+We see that our agent is learning something at some point, its reward went up, the actor loss went down. And the resulting movement was encouraging. 
+
 * SAC_4	: even even more training time, as it seems it could learn more. We go too far in the training :D
 * SAC_5   : slow down the circular motion, giving it more time to adjust, but requires a lot more traning !
 
@@ -60,7 +62,7 @@ RL developement was an iterative process for us. Here are some examples of train
 ![Example RL time management 1](images/rl_7.png)
 ![Example RL time management 2](images/rl_8.png)
 
-Unfortunately, we are not yet able to perform a proper circular movement learned with RL. At best the arm reaches the location of the circle and vaguely goes around it.
+Unfortunately, we are not yet able to perform a proper circular movement learned with RL. At best the arm reaches the location of the circle and vaguely goes around it. We found it hard to determine what were the steps to make it work, but there is an extensive documentation about RL and room for improvement.
 
 Some illustrations of what you can see when using the RL setup to try out a learned movement, the arm is trying to reach the red dot on the circle :
 
