@@ -170,6 +170,9 @@ log/
 logs/
 sac_ur10_tensorboard
 sac_circular
+image_generation.ipynb
+images/
 
 # Model
 *.pth
+*.pkl
