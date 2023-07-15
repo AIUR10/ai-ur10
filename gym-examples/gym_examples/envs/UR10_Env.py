@@ -24,13 +24,12 @@ SCENE_FILE = join(os.getcwd(), 'scene_robots_ur10_circular_easystart.ttt')
 EPISODES = 2
 EPISODE_LENGTH = 3
 DISTANCE_BONUS = 1 # 10
-BONUS_THRESHOLD = 0.05
-BONUS_REWARD = 10
-VELOCITY_PENALTY = 0.01
+BONUS_REWARD = 10000
+VELOCITY_PENALTY = 0.001
 ORIENTATION_PENALTY = 10 #1000 #0.01
 
-DONE_DISTANCE = 0.025
-DONE_ORIENTATION = 0.1 # quite arbitrary for now
+DONE_DISTANCE = 0.01 #0.025
+DONE_ORIENTATION = 0.25 #0.5 # quite arbitrary for now
 
 class UR10Env(gym.Env):
 
@@ -112,16 +111,12 @@ class UR10Env(gym.Env):
 
         # Calculate distance to the target
         distance = np.linalg.norm(np.array(target_position) - np.array(ee_position))
-
-        # Check if the arm has moved the required distance
-        reward = DISTANCE_BONUS*(1/distance)
-        #if distance < BONUS_THRESHOLD:  # Add a bonus for reaching the target
-        #    reward += BONUS_REWARD
         # Penalize incorrect orientation
         # Should match target orientation
-        orientation = (1/distance)*np.linalg.norm(self.agent_ee_tip.get_orientation(relative_to=self.target))
+        orientation = np.linalg.norm(self.agent_ee_tip.get_orientation(relative_to=self.target))
         #print(f"Tip orientation relatively to target {orientation}")
-        reward -= orientation #* ORIENTATION_PENALTY # As for now it looks at the center of the circular motion
+        # Check if the arm has moved the required distance and is orientated correctly
+        reward = 1/(distance+orientation)
         # Penalize high velocities
         reward -= np.linalg.norm(action) * VELOCITY_PENALTY 
 
@@ -129,6 +124,7 @@ class UR10Env(gym.Env):
         if distance < DONE_DISTANCE and orientation < DONE_ORIENTATION:
             self.count_down -= 1
             print("TARGET REACHED")
+            reward += BONUS_REWARD
 
         # Check if the episode is done
         done = self.count_down == 0
