@@ -68,7 +68,7 @@ class UR10Env(gym.Env):
         return obs
 
     def reset(self):
-        print("RESET")
+        #print("RESET")
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         # Reset the first position to reach
         path_position = self.path.get_pose_on_path(0)[0]
@@ -123,7 +123,7 @@ class UR10Env(gym.Env):
         # Update the count down
         if distance < DONE_DISTANCE and orientation < DONE_ORIENTATION:
             self.count_down -= 1
-            print("TARGET REACHED")
+            #print("TARGET REACHED")
             reward += BONUS_REWARD
 
         # Check if the episode is done
