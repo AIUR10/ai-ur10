@@ -24,8 +24,8 @@ SCENE_FILE = join(os.getcwd(), 'scene_robots_ur10_circular_easystart.ttt')
 EPISODES = 2
 EPISODE_LENGTH = 3
 DISTANCE_BONUS = 1 # 10
-BONUS_REWARD = 10000
-VELOCITY_PENALTY = 0.001
+BONUS_REWARD = 100
+VELOCITY_PENALTY = 0.01
 ORIENTATION_PENALTY = 10 #1000 #0.01
 
 DONE_DISTANCE = 0.01 #0.025
@@ -52,9 +52,9 @@ class UR10Env(gym.Env):
         self.count_down = self.max_steps #+ self.nb_steps_first_position
 
         # observation space
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32)
         # action space
-        self.action_space = spaces.Box(low=-0.05, high=0.05, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-0.025, high=0.025, shape=(6,), dtype=np.float32)
 
         #print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
         
@@ -62,8 +62,8 @@ class UR10Env(gym.Env):
         # Return state containing arm joint angles/velocities & target position
         obs = np.concatenate([self.agent.get_joint_positions(),
                             self.agent.get_joint_velocities(), 
-                            self.target.get_position() - self.agent_ee_tip.get_position(),
-                            self.agent_ee_tip.get_orientation(relative_to=self.target)])
+                            self.target.get_position() - self.agent_ee_tip.get_position(),])
+                            #self.agent_ee_tip.get_orientation(relative_to=self.target)])
         #print(obs)
         return obs
 
@@ -113,15 +113,16 @@ class UR10Env(gym.Env):
         distance = np.linalg.norm(np.array(target_position) - np.array(ee_position))
         # Penalize incorrect orientation
         # Should match target orientation
-        orientation = np.linalg.norm(self.agent_ee_tip.get_orientation(relative_to=self.target))
+        #orientation = np.linalg.norm(self.agent_ee_tip.get_orientation(relative_to=self.target))
         #print(f"Tip orientation relatively to target {orientation}")
         # Check if the arm has moved the required distance and is orientated correctly
-        reward = 1/(distance+orientation)
+        #reward = 1/(distance+orientation)
+        reward = -distance
         # Penalize high velocities
-        reward -= np.linalg.norm(action) * VELOCITY_PENALTY 
+        reward -= np.sum(np.abs(action)) * VELOCITY_PENALTY 
 
         # Update the count down
-        if distance < DONE_DISTANCE and orientation < DONE_ORIENTATION:
+        if distance < DONE_DISTANCE : #and orientation < DONE_ORIENTATION:
             self.count_down -= 1
             #print("TARGET REACHED")
             reward += BONUS_REWARD
