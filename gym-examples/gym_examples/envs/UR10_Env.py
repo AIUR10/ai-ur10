@@ -23,10 +23,13 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 SCENE_FILE = join(os.getcwd(), 'scene_robots_ur10_circular_easystart.ttt')
 
 DISTANCE_BONUS = 1
-BONUS_REWARD = 100
-VELOCITY_PENALTY = 0.01
+BONUS_REWARD_DISTANCE = 100
 DONE_DISTANCE = 0.01
-IS_ORIENTED = False # quite arbitrary for now
+VELOCITY_COEF = 0.01
+BONUS_REWARD_ORIENTATION = 10
+DONE_ORIENTATION = 0.05
+orientation_coef = 1
+BONUS_REWARD_DISTANCE_ORIENTATION = 1000
 
 class UR10Env(gym.Env):
 
@@ -49,7 +52,7 @@ class UR10Env(gym.Env):
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
         # action space
         self.action_space = spaces.Box(low=-0.025, high=0.025, shape=(6,), dtype=np.float32)
-        #print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
+        print(f"Simulation time step: {self.pr.get_simulation_timestep()} seconds")
         
     def get_obs(self):
         # Return state containing arm joint angles/velocities & target position
@@ -57,7 +60,7 @@ class UR10Env(gym.Env):
                             self.agent.get_joint_velocities(), 
                             self.target.get_position() - self.agent_ee_tip.get_position(),
                             self.path.get_position(relative_to=self.agent_ee_tip),])
-        #print(obs)
+        #print(f"OBSERVATION : {obs}")
         return obs
 
     def reset(self):
@@ -84,38 +87,52 @@ class UR10Env(gym.Env):
         # Adjust orientation to get the one desired for the tip
         self.target.set_orientation([np.pi/2, 0, 0], relative_to=self.target) # after observation, I found this is the correct orientation
         target_position = self.target.get_position()
-        #print(f"Target position {target_position}")
+        #print(f"TARGET POSITION {target_position}")
 
         # Act to reach position
         self.agent.set_joint_target_velocities(action)  # Apply action, which contains velocities
         self.pr.step()  # Step the physics simulation forward
-        ee_position = self.agent_ee_tip.get_position()  # Get the final position of the end effector
 
+        # Distance
         # Calculate distance to the target
+        ee_position = self.agent_ee_tip.get_position()  # Get the final position of the end effector
         distance = np.linalg.norm(np.array(target_position) - np.array(ee_position))
         # Reward proximity to the target
         reward = -distance
+        #print(f"DISTANCE REWARD : {distance}")
+
+        # Velocity
         # Penalize high velocities
-        reward -= np.sum(np.abs(action)) * VELOCITY_PENALTY 
+        velocity_penalty = np.sum(np.abs(action)) * VELOCITY_COEF 
+        reward -= velocity_penalty
+        #print(f"VELOCITY PENALTY : {velocity_penalty}")
 
-        
 
-        # Orientation : sparse reward
-        # the arm should be correctly oriented at all time
-        # hence the reward is 0 if not facing the tip
+        # Orientation
         path_center = self.path.get_position(relative_to=self.agent_ee_tip) # path center position relative to the tip
-        if np.abs(path_center[0]) > 0.01 or np.abs(path_center[1]) > 0.01 or np.abs(path_center[2]) <= 0:
-            reward = 0
-            IS_ORIENTED = False
-        else : 
-            IS_ORIENTED = True
+        # Penalize incorrect orientation
+        orientation_penalty = np.square(path_center[0]) + np.square(path_center[1])
+        if path_center[2] <= 0:
+            orientation_penalty += np.square(path_center[2])
+        orientation_penalty = np.sqrt(orientation_penalty)
+        #print(f"ORIENTATION PENALTY : {orientation_penalty}") 
+        reward -= orientation_coef*orientation_penalty
 
-        # Update the count down
-        if distance < DONE_DISTANCE and IS_ORIENTED:
+        # Reward seperatly the distance and the orientation
+        if distance < DONE_DISTANCE:
+            reward += BONUS_REWARD_DISTANCE
+            orientation_coef = 100
+
+        if orientation_penalty < DONE_ORIENTATION:
+            reward += BONUS_REWARD_ORIENTATION
+            orientation_coef = 1
+
+        # Update the count down when distance and orientation are achieved
+        if distance < DONE_DISTANCE and orientation_penalty < DONE_ORIENTATION:
+            reward += BONUS_REWARD_DISTANCE_ORIENTATION
+            orientation_coef = 1
             self.count_down -= 1
-            #print("TARGET REACHED")
-            reward += BONUS_REWARD
-
+            
         # Check if the episode is done
         done = self.count_down == 0
         return self.get_obs(), reward, done, {}
