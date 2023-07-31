@@ -29,7 +29,7 @@ DONE_ORIENTATION = 0.05
 class UR10Env(gym.Env):
 
     def __init__(self, headless=True, responsive_ui=False, max_steps=1000, 
-                 orientation_coef=1, 
+                 orientation_coef=1000, 
                  bonus_reward_distance=100, 
                  bonus_reward_orientation=10, 
                  bonus_reward_distance_orientation=1000):
@@ -59,6 +59,7 @@ class UR10Env(gym.Env):
         self.current_bonus_reward_distance = 0
         self.current_bonus_reward_orientation = 0
         self.current_bonus_reward_distance_orientation = 0
+        self.current_orientation_coef = 1 
         # reward factors
         # change after a step
         self.distance = 0
@@ -86,6 +87,11 @@ class UR10Env(gym.Env):
         self.target.set_orientation([np.pi/2, 0, 0], relative_to=self.target) # after observation, I found this is the correct orientation
         # Reset count down
         self.count_down = self.max_steps
+        # Reset bonuses and coefs
+        self.current_bonus_reward_distance = 0
+        self.current_bonus_reward_orientation = 0
+        self.current_bonus_reward_distance_orientation = 0
+        self.current_orientation_coef = 1 
         return self.get_obs()
 
     def step(self, action):
@@ -128,26 +134,29 @@ class UR10Env(gym.Env):
             self.orientation_penalty += np.square(path_center[2])
         self.orientation_penalty = np.sqrt(self.orientation_penalty)
         #print(f"ORIENTATION PENALTY : {orientation_penalty}") 
-        reward -= self.orientation_penalty * self.orientation_coef
+        reward -= self.orientation_penalty * self.current_orientation_coef
 
         # Reward seperatly the distance and the orientation
         if self.distance < DONE_DISTANCE:
             self.current_bonus_reward_distance = self.bonus_reward_distance
-            self.orientation_coef = 100
+            self.current_orientation_coef = self.orientation_coef
+            #print(f"BONUS DISTANCE : {self.current_bonus_reward_distance}")
         else:
             self.current_bonus_reward_distance = 0
 
         if self.orientation_penalty < DONE_ORIENTATION:
             self.current_bonus_reward_orientation = self.bonus_reward_orientation
-            self.orientation_coef = 1
+            self.current_orientation_coef = 1
+            #print(f"BONUS ORIENTATION : {self.current_bonus_reward_orientation}")
         else:
             self.current_bonus_reward_orientation = 0
 
         # Update the count down when distance and orientation are achieved
         if self.distance < DONE_DISTANCE and self.orientation_penalty < DONE_ORIENTATION:
             self.current_bonus_reward_distance_orientation = self.bonus_reward_distance_orientation
-            self.orientation_coef = 1
+            self.current_orientation_coef = 1
             self.count_down -= 1
+            #print(f"BONUS DISTANCE ORIENTATION : {self.current_bonus_reward_distance_orientation}")
         else:
             self.current_bonus_reward_distance_orientation = 0
 

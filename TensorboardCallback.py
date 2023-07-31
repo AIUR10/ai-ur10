@@ -19,4 +19,5 @@ class TensorboardCallback(CheckpointCallback):
         self.logger.record("bonus_reward_distance", self.env.current_bonus_reward_distance)
         self.logger.record("bonus_reward_orientation", self.env.current_bonus_reward_orientation)
         self.logger.record("bonus_reward_distance_orientation", self.env.current_bonus_reward_distance_orientation)
+        self.logger.record("count_down", self.env.count_down)
         return True
