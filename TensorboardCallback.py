@@ -14,7 +14,7 @@ class TensorboardCallback(CheckpointCallback):
         # Log scalar values
         self.logger.record("distance", self.env.distance)
         self.logger.record("orientation_penalty", self.env.orientation_penalty)
-        self.logger.record("orientation_coef", self.env.orientation_coef)
+        self.logger.record("orientation_coef", self.env.current_orientation_coef)
         self.logger.record("velocity penalty", self.env.velocity_penalty)
         self.logger.record("bonus_reward_distance", self.env.current_bonus_reward_distance)
         self.logger.record("bonus_reward_orientation", self.env.current_bonus_reward_orientation)
